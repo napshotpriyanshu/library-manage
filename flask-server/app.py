@@ -5,12 +5,14 @@ import MySQLdb
 from datetime import datetime
 
 from utils import AddCustomer,AddBook,IssueBook,ReturnBook
+
+
 @app.route('/booklist', methods=['GET'])
 def booklist():
     cur = mysql.connection.cursor()
 
     result = cur.execute(
-        "SELECT id,title,author FROM Books"
+        "SELECT id,title,author,total_quantity,available_quantity,rented_count FROM Books"
     )
     books = cur.fetchall()
     print(jsonify(books))
@@ -46,7 +48,7 @@ def viewBook(id):
 def create_book():
 
     form = AddBook(request.form)
-
+    print(form.data)
 
     if form.validate():
 
@@ -194,7 +196,6 @@ def customer():
     print(customers)
     cur.close()
 
-    # Render Template
     if result > 0:
         return jsonify(customers)
     else:
@@ -342,6 +343,7 @@ def transactions():
         msg = 'No Transactions Found'
         return msg
 
+
 @app.route('/book_issue', methods=['POST'])
 def book_issue():
     form = IssueBook(request.form)
@@ -403,7 +405,7 @@ def book_issue():
         # Redirect to show all transactions
         return 'transactions'
 
-@app.route('/return_book/<string:transaction_id>', methods=['POST'])
+@app.route('/return_book/<string:transaction_id>', methods=['GET','POST'])
 
 def return_book(transaction_id):
 
@@ -419,7 +421,7 @@ def return_book(transaction_id):
     total_charge = diff * transaction['per_day_fee']
     print(form.amount_paid)
 
-    if form.validate():
+    if form.validate() and request.method == 'POST':
         transaction_debt = total_charge - form.amount_paid.data
 
         cur.execute("SELECT outstanding_debt, amount_spent FROM customer WHERE id=%s", [transaction['customer_id']])
@@ -452,7 +454,7 @@ def return_book(transaction_id):
         flash("book returned", "success")
         return "book returned"
 
-    return "over"
+    return jsonify(diff, total_charge)
 
 
 if __name__ == '__main__':
